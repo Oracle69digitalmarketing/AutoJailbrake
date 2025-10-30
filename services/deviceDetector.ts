@@ -1,27 +1,47 @@
-import { MOCK_DEVICES } from '../constants';
 import type { Device } from '../types';
 
 type Subscription = {
-  onConnect: (device: Device) => void;
+  onConnect: (devices: Device[]) => void;
   onDisconnect: () => void;
+  onError: (error: string) => void;
 };
 
 class DeviceDetectorService {
-  // FIX: Use ReturnType<typeof setInterval> for browser compatibility instead of NodeJS.Timeout
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private listeners: Set<Subscription> = new Set();
   private isConnected = false;
 
   start() {
-    this.stop(); // Ensure no multiple intervals running
-    this.intervalId = setInterval(() => {
-      if (!this.isConnected) {
-        // Pick a random device to simulate connection
-        const randomDevice = MOCK_DEVICES[Math.floor(Math.random() * MOCK_DEVICES.length)];
-        this.isConnected = true;
-        this.listeners.forEach(listener => listener.onConnect(randomDevice));
+    this.stop(); 
+    this.fetchDevices(); // Initial fetch
+    this.intervalId = setInterval(() => this.fetchDevices(), 5000); // Poll every 5 seconds
+  }
+
+  async fetchDevices() {
+    try {
+      const response = await fetch('http://127.0.0.1:5000/detect');
+      if (!response.ok) {
+        throw new Error(`Backend server responded with status: ${response.status}`);
       }
-    }, 5000); // Simulate connection after 5 seconds
+      const devices: Device[] = await response.json();
+      
+      if (devices && devices.length > 0) {
+          if (!this.isConnected) {
+            this.isConnected = true;
+            this.listeners.forEach(listener => listener.onConnect(devices));
+          }
+      } else {
+          if (this.isConnected) {
+            this.isConnected = false;
+            this.listeners.forEach(listener => listener.onDisconnect());
+          }
+      }
+
+    } catch (error) {
+      console.error("Failed to fetch devices from backend:", error);
+      this.listeners.forEach(listener => listener.onError('Could not connect to backend service.'));
+      this.stop();
+    }
   }
 
   stop() {

@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { XMarkIcon } from './icons';
 
@@ -7,12 +6,13 @@ interface ModalProps {
     onClose: () => void;
     title: string;
     children: React.ReactNode;
+    isDismissible?: boolean;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, isDismissible = true }) => {
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
+            if (isDismissible && event.key === 'Escape') {
                 onClose();
             }
         };
@@ -26,11 +26,17 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
             document.removeEventListener('keydown', handleKeyDown);
             document.body.style.overflow = 'unset';
         };
-    }, [isOpen, onClose]);
+    }, [isOpen, onClose, isDismissible]);
 
     if (!isOpen) {
         return null;
     }
+
+    const handleBackdropClick = () => {
+        if (isDismissible) {
+            onClose();
+        }
+    };
 
     return (
         <div 
@@ -42,7 +48,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
             <div 
                 className="fixed inset-0 bg-black/60 backdrop-blur-sm" 
                 aria-hidden="true"
-                onClick={onClose}
+                onClick={handleBackdropClick}
             ></div>
             
             <div className="relative w-full max-w-lg mx-auto m-6 rounded-lg border border-[var(--neutral-700)] bg-[var(--neutral-800)] text-white shadow-2xl">
@@ -50,13 +56,15 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
                     <h3 className="text-xl font-semibold" id="modal-title">
                         {title}
                     </h3>
-                    <button 
-                        onClick={onClose}
-                        className="p-1 text-[var(--neutral-400)] hover:text-white transition-colors rounded-md hover:bg-[var(--neutral-700)]"
-                        aria-label="Close modal"
-                    >
-                        <XMarkIcon className="w-6 h-6" />
-                    </button>
+                    {isDismissible && (
+                        <button 
+                            onClick={onClose}
+                            className="p-1 text-[var(--neutral-400)] hover:text-white transition-colors rounded-md hover:bg-[var(--neutral-700)]"
+                            aria-label="Close modal"
+                        >
+                            <XMarkIcon className="w-6 h-6" />
+                        </button>
+                    )}
                 </div>
                 <div className="p-6">
                     {children}

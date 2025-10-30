@@ -1,12 +1,11 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { logger } from '../services/logger';
 import type { LogEntry } from '../types';
 
 const logTypeClasses = {
-    info: 'text-blue-400',
-    success: 'text-green-400',
-    error: 'text-red-400',
+  info: 'text-blue-400',
+  success: 'text-green-400',
+  error: 'text-red-400',
 };
 
 const ActivityLog: React.FC = () => {
@@ -25,15 +24,14 @@ const ActivityLog: React.FC = () => {
     }, [logs]);
 
     return (
-        <div className="flex flex-col gap-3">
-            <p className="text-sm text-[var(--neutral-400)]">Real-time log of all application activities.</p>
-            <div ref={logContainerRef} className="h-64 overflow-y-auto rounded-md bg-[var(--neutral-900)] p-4 font-mono text-sm text-[var(--neutral-300)]">
-                {logs.length === 0 && <p className="text-[var(--neutral-500)]">No activity yet.</p>}
+        <div className="rounded-lg border border-[var(--neutral-800)] bg-[var(--neutral-800)]/30 p-4">
+            <h3 className="text-md font-semibold mb-2">Activity Log</h3>
+            <div ref={logContainerRef} className="h-48 resize-y overflow-y-auto rounded-md bg-[var(--neutral-900)] p-2 font-mono text-xs">
                 {logs.map((log, index) => (
-                    <div key={index} className="flex gap-4">
+                    <div key={index} className="flex gap-2">
                         <span className="text-[var(--neutral-500)]">{log.timestamp}</span>
-                        <span className={`font-bold ${logTypeClasses[log.type]}`}>{log.type.toUpperCase()}</span>
-                        <span>{log.message}</span>
+                        <span className={`${logTypeClasses[log.type]} font-bold`}>{log.type.toUpperCase()}</span>
+                        <span className="text-[var(--neutral-300)] flex-1">{log.message}</span>
                     </div>
                 ))}
             </div>

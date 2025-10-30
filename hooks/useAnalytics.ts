@@ -1,30 +1,20 @@
+import { useCallback } from 'react';
 
-import { useEffect } from 'react';
+// This is a mock analytics hook for demonstration purposes.
+// In a real application, this would integrate with a service like Google Analytics, Mixpanel, etc.
 
-// A mock analytics hook for demonstration purposes.
-// In a real application, this would integrate with a service like Google Analytics.
-
-const trackEvent = (eventName: string, eventData: Record<string, any>) => {
-    console.log(`[Analytics] Event: ${eventName}`, eventData);
-    // Here you would typically send data to your analytics provider
-    // e.g., window.gtag('event', eventName, eventData);
-};
+interface AnalyticsEvent {
+  name: string;
+  properties?: Record<string, any>;
+}
 
 export const useAnalytics = () => {
-    useEffect(() => {
-        // Track initial page view
-        trackEvent('page_view', { page_path: window.location.pathname });
-    }, []);
+  const trackEvent = useCallback((event: AnalyticsEvent) => {
+    console.log('[ANALYTICS]', `Event: "${event.name}"`, event.properties || '');
+    // Here you would call your analytics service's tracking method, e.g.,
+    // window.ga('send', 'event', ...);
+    // mixpanel.track(event.name, event.properties);
+  }, []);
 
-    return {
-        trackEvent,
-    };
-};
-
-// Example specific event hooks
-export const useTrackDeviceConnection = () => {
-    const { trackEvent } = useAnalytics();
-    return (deviceType: 'iOS' | 'Android') => {
-        trackEvent('device_connected', { device_type: deviceType });
-    };
+  return { trackEvent };
 };

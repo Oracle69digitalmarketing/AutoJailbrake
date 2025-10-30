@@ -54,6 +54,7 @@ export const getAvailableExploits = async (device: Device): Promise<Exploit[]> =
 // FIX: Initialize Gemini API client according to guidelines
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+// FIX: Aligned function with Gemini API guidelines for initialization, content generation, and response handling.
 export const getAIRecommendation = async (device: Device): Promise<OrchestratorPlan> => {
     await sleep(2500); // Simulate API latency
     
@@ -86,9 +87,8 @@ export const getAIRecommendation = async (device: Device): Promise<OrchestratorP
     `;
 
     try {
-        // FIX: Use the correct generateContent API call with responseSchema as per guidelines
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash', // Use a suitable model for this task
+            model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
@@ -109,7 +109,6 @@ export const getAIRecommendation = async (device: Device): Promise<OrchestratorP
             }
         });
 
-        // FIX: Use response.text to get the generated content as per guidelines
         const text = response.text.trim();
         const recommendation = JSON.parse(text);
         return recommendation;

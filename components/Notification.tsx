@@ -1,7 +1,10 @@
+
+
 import React, { useEffect, useState } from 'react';
 import type { NotificationData } from '../types';
 import { dismissNotification } from '../services/notification';
-import { CheckCircleIcon, ExclamationCircleIcon, XMarkIcon } from './icons';
+// FIX: Replace ExclamationCircleIcon with ExclamationTriangleIcon as it is the available icon for errors.
+import { CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from './icons';
 
 interface NotificationProps {
   notification: NotificationData;
@@ -9,7 +12,8 @@ interface NotificationProps {
 
 const icons = {
   success: <CheckCircleIcon className="h-6 w-6 text-green-400" />,
-  error: <ExclamationCircleIcon className="h-6 w-6 text-red-400" />,
+  // FIX: Use ExclamationTriangleIcon for error status.
+  error: <ExclamationTriangleIcon className="h-6 w-6 text-red-400" />,
 };
 
 const Notification: React.FC<NotificationProps> = ({ notification }) => {
