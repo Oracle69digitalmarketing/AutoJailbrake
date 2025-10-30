@@ -1,0 +1,5 @@
+{
+  "name": "AutoJailbreak",
+  "description": "An automation-first, dual-platform jailbreaking app for iOS + Android, that detects device, auto-runs compatible exploits, installs a package manager, and provides a local/remote control interface.",
+  "requestFramePermissions": []
+}
