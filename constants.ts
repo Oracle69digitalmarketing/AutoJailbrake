@@ -1,96 +1,64 @@
 
-import type { Device, RecoveryModule } from './types';
-import { DeviceStatus, RecoveryAction } from './types';
-import { PhotoIcon, ChatBubbleLeftRightIcon, GlobeAltIcon, CircleStackIcon } from './components/icons';
+import type { Device, Backup, RecoveryModule } from './types';
+import { DeviceStatus } from './types';
+import { PhotoIcon, MessageIcon, ContactIcon, DocumentIcon } from './components/icons';
 
 export const MOCK_DEVICES: Device[] = [
-  {
-    id: '1',
-    name: 'iPhone 14 Pro',
-    os: 'iOS',
-    osVersion: '16.2',
-    imageUrl: 'https://picsum.photos/id/11/400/600',
-    status: DeviceStatus.Unlocked,
-    serial: 'C39Q87X2J19C',
-    storage: '256GB',
-    imei: '356789012345678',
-  },
-  {
-    id: '2',
-    name: 'Galaxy Tab S8',
-    os: 'Android',
-    osVersion: '13',
-    imageUrl: 'https://picsum.photos/id/12/600/400',
-    status: DeviceStatus.Locked,
-    serial: 'R52R301 ABCDE',
-    storage: '128GB',
-    imei: '351234567890123',
-  },
-  {
-    id: '3',
-    name: 'iPhone 12 Mini',
-    os: 'iOS',
-    osVersion: '15.7',
-    imageUrl: 'https://picsum.photos/id/13/400/600',
-    status: DeviceStatus.Jailbroken,
-    serial: 'F17F1234PL6L',
-    storage: '64GB',
-    imei: '359876543210987',
-  },
-  {
-    id: '4',
-    name: 'Pixel 7 Pro',
-    os: 'Android',
-    osVersion: '14',
-    imageUrl: 'https://picsum.photos/id/14/400/600',
-    status: DeviceStatus.Unlocked,
-    serial: '2A211FDH123456',
-    storage: '128GB',
-    imei: '355551111222333',
-  },
-  {
-    id: '5',
-    name: 'iPad Pro 11"',
-    os: 'iOS',
-    osVersion: '16.5',
-    imageUrl: 'https://picsum.photos/id/15/600/400',
-    status: DeviceStatus.Locked,
-    serial: 'DLXABCD12345',
-    storage: '512GB',
-    imei: 'N/A',
-  },
-  {
-    id: '6',
-    name: 'OnePlus 11',
-    os: 'Android',
-    osVersion: '13',
-    imageUrl: 'https://picsum.photos/id/16/400/600',
-    status: DeviceStatus.Unlocked,
-    serial: 'OP11A1B2C3D4',
-    storage: '256GB',
-    imei: '354448888777666',
-  },
+    {
+        id: 'iphone-13-pro-1',
+        name: 'iPhone 13 Pro',
+        os: 'iOS',
+        osVersion: '15.4.1',
+        imageUrl: 'https://picsum.photos/seed/iphone13pro/400/600',
+        status: DeviceStatus.Unlocked,
+        serial: 'C39L2ZJ9P28L',
+        storage: '256GB',
+        imei: '358734098213457'
+    },
+    {
+        id: 'iphone-x-2',
+        name: 'iPhone X',
+        os: 'iOS',
+        osVersion: '14.8',
+        imageUrl: 'https://picsum.photos/seed/iphonex/400/600',
+        status: DeviceStatus.Locked,
+        serial: 'G6TPL0R3JCLF',
+        storage: '64GB',
+        imei: '354898091238765'
+    },
+    {
+        id: 'galaxy-s21-3',
+        name: 'Galaxy S21',
+        os: 'Android',
+        osVersion: '12.0',
+        imageUrl: 'https://picsum.photos/seed/galaxys21/400/600',
+        status: DeviceStatus.Unlocked,
+        serial: 'R58R30P5Z5B',
+        storage: '128GB',
+        imei: '351987093456789'
+    },
+     {
+        id: 'iphone-11-4',
+        name: 'iPhone 11',
+        os: 'iOS',
+        osVersion: '14.3',
+        imageUrl: 'https://picsum.photos/seed/iphone11/400/600',
+        status: DeviceStatus.Jailbroken,
+        serial: 'F17Z4QWERTY',
+        storage: '128GB',
+        imei: '352456098765432'
+    },
 ];
 
 export const RECOVERY_MODULES: RecoveryModule[] = [
-    {
-        name: RecoveryAction.ScanPhotos,
-        description: 'Perform a deep scan of the device storage to find and recover deleted photos and videos.',
-        icon: PhotoIcon,
-    },
-    {
-        name: RecoveryAction.RecoverChats,
-        description: 'Attempt to recover deleted messages and chat histories from apps like iMessage and WhatsApp.',
-        icon: ChatBubbleLeftRightIcon,
-    },
-    {
-        name: RecoveryAction.ExtractBrowserData,
-        description: 'Scan for and extract browser history, bookmarks, and cached credentials from Safari or Chrome.',
-        icon: GlobeAltIcon,
-    },
-    {
-        name: RecoveryAction.FullFilesystemScan,
-        description: 'A comprehensive scan of the entire filesystem for all recoverable file types. May take a long time.',
-        icon: CircleStackIcon,
-    }
-]
+    { name: 'Scan for Photos', description: 'Search for deleted photos and images from the device\'s internal storage.', icon: PhotoIcon },
+    { name: 'Scan for Messages', description: 'Attempt to recover deleted SMS, iMessage, and WhatsApp conversations.', icon: MessageIcon },
+    { name: 'Scan for Contacts', description: 'Find and restore deleted contacts from the address book.', icon: ContactIcon },
+    { name: 'Scan for Documents', description: 'Recover deleted documents, notes, and other text-based files.', icon: DocumentIcon },
+];
+
+export const MOCK_BACKUPS: Backup[] = [
+    { id: 'backup-1', name: 'Pre-Jailbreak Backup', type: 'Full System', date: '2023-10-26', size: '15.4 GB' },
+    { id: 'backup-2', name: 'Weekly Snapshot', type: 'Full System', date: '2023-10-22', size: '14.9 GB' },
+    { id: 'backup-3', name: 'Photos Only', type: 'Partial', date: '2023-09-15', size: '8.2 GB' },
+];
