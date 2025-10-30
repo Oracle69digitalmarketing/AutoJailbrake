@@ -1,69 +1,117 @@
-# How-to & Development Guidelines
+# AutoJailbreak - Technical Guide (HOW-TO)
 
-This document provides technical guidelines for developers contributing to the AutoJailbreak project. It covers the application's architecture, frontend-backend communication, and development workflow.
+This document provides a technical overview of the AutoJailbreak application, its architecture, and guidelines for development.
 
-## 🏛️ Architectural Overview
+## 🚀 Full Stack Architecture
 
-The application follows a client-server model, with a Python backend handling all the heavy lifting and an Electron frontend providing the user interface.
+AutoJailbreak is a full-stack application composed of a backend for core logic and a frontend for user interaction.
 
-### 1. Python Backend (Flask)
-
--   **Role:** The "brain" of the application.
--   **Responsibilities:**
-    -   **Device Detection:** Uses tools like `libimobiledevice` and `ADB` to detect and identify connected devices.
-    -   **Exploit Logic:** Contains the logic to match a device's OS and version to the correct exploit from its database.
-    -   **Automation & Execution:** Runs the actual shell scripts and command-line tools that perform the jailbreak, unlock, or recovery.
-    -   **API Server:** Exposes a set of RESTful endpoints (e.g., `/detect`, `/start`, `/logs`) for the frontend to call.
-
-### 2. Electron Frontend (React)
-
--   **Role:** The "face" of the application.
--   **Responsibilities:**
-    -   **User Interface:** Renders the device dashboard, detailed views, and the process monitor.
-    -   **User Interaction:** Captures user actions (e.g., clicking the "Start Jailbreak" button).
-    -   **API Client:** Makes `fetch` requests to the Python backend to get data and trigger operations.
-    -   **State Management:** Manages the UI state, including displaying data from the backend and showing loading/processing states.
+-   **Backend (Python + Flask):** A powerful core responsible for device communication (via ADB, libimobiledevice), exploit execution, and automation logic. It exposes a simple REST API for the frontend to consume.
+-   **Frontend (Electron Target + React):** A modern, cross-platform desktop application that provides a clean and intuitive user interface for managing devices and triggering actions.
 
 ---
 
-## 🔌 Frontend-Backend Communication
+## 🏁 Backend Setup & Running
 
-The frontend and backend communicate over a local HTTP API. This keeps the two parts decoupled and allows them to be developed and tested independently.
+To run the full-stack application, you must run the Python backend server.
 
--   **Backend Server Address:** The Flask server runs locally at `http://127.0.0.1:5000`.
--   **API Endpoints:**
-    -   `GET /detect`: Asks the backend to scan for connected devices and returns a list of device objects.
-    -   `POST /start`: Tells the backend to start a specific operation (e.g., jailbreak) on a device. The request body includes the device ID and the desired action.
-    -   `GET /logs`: Fetches the latest logs for an ongoing operation.
-    -   `POST /update`: Triggers the backend's auto-updater module to fetch new exploits.
+### 1. Prerequisites
 
-**Example `fetch` call from the frontend:**
-```javascript
-async function triggerJailbreak(os, device) {
-  const response = await fetch('http://127.0.0.1:5000/start', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ os, device })
-  });
-  return await response.json();
-}
+Before you begin, ensure you have the following installed on your system:
+-   **Python 3.8+** and `pip`.
+-   **(For iOS)** `libimobiledevice` (provides `ideviceinfo`).
+    -   On macOS: `brew install libimobiledevice`
+    -   On Linux: `sudo apt-get install libimobiledevice-utils`
+-   **(For Android)** `adb` (Android Debug Bridge).
+    -   Usually installed with Android Studio or via package managers.
+
+### 2. Installation
+
+1.  Navigate to the `server` directory in your terminal:
+    ```bash
+    cd server
+    ```
+2.  Install the required Python packages using `pip`:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+### 3. Running the Server
+
+1.  From the `server` directory, run the Flask application:
+    ```bash
+    flask run
+    ```
+    Alternatively, you can run:
+    ```bash
+    python app.py
+    ```
+2.  The server will start, typically on `http://127.0.0.1:5000`. Leave this terminal window running. The frontend application will communicate with this server.
+
+---
+
+## 🔌 API Contract
+
+The frontend communicates with the backend via the following REST API endpoints.
+
+### `GET /detect`
+
+-   **Purpose:** Detects all currently connected iOS and Android devices.
+-   **Method:** `GET`
+-   **Response Body:** `application/json`
+    ```json
+    [
+      {
+        "id": "device-udid-or-serial",
+        "name": "iPhone 13 Pro",
+        "os": "iOS",
+        "osVersion": "15.1",
+        "status": "Unlocked",
+        "serial": "...",
+        "storage": "...",
+        "imei": "..."
+      }
+    ]
+    ```
+
+### `POST /execute`
+
+-   **Purpose:** Executes a long-running action (like a jailbreak or recovery) and streams the log output back to the client in real-time.
+-   **Method:** `POST`
+-   **Request Body:** `application/json`
+    ```json
+    {
+      "actionName": "Install checkm8"
+    }
+    ```
+-   **Response Body:** `text/plain` (Streaming)
+    -   The server returns a streaming response where each line is a log message from the executed process. The frontend reads this stream line-by-line to update the Process Monitor.
+
+---
+
+## 🛠️ Integrating Real Exploits and Tools
+
+The core of the backend's power comes from its ability to execute real command-line tools.
+
+-   **Execution Engine:** The `server/core/executor.py` module uses Python's built-in `subprocess` library to run external binaries and scripts.
+-   **Tool Location:** All exploit binaries, scripts, and related tools should be placed in the `server/bin/` directory.
+-   **Logic:** The `executor.py` module will contain a mapping from `actionName` (received from the API) to the specific command that needs to be run. For example, the action "Jailbreak with checkm8" might map to the command `./bin/checkra1n -c`.
+-   **Output Streaming:** The `subprocess.Popen` object's `stdout` is read line-by-line and yielded back through the Flask response stream, creating the real-time log feed.
+
+## 📂 Project Structure
+
 ```
-
----
-
-## 🛠️ How to Add a New Feature
-
-### 1. Add a New Exploit or Tool
-
-1.  **Backend:** Add the new exploit script/binary to the appropriate directory within `server/exploits/`.
-2.  **Backend:** Update the YAML configuration (`server/configs/devices.yaml`) to map the new exploit to the correct device models and OS versions.
-3.  **Backend:** If necessary, update the Python exploit selection logic in `server/core/exploit_selector.py` to handle the new tool.
-4.  **Frontend:** The frontend should automatically display the new action if the backend logic is correct. No frontend changes are typically needed, as the UI is driven by data from the backend.
-
-### 2. Add a New UI Component
-
-1.  Create a new file in `desktop/components/` (e.g., `NewComponent.tsx`).
-2.  Define the component's props in a TypeScript `interface`.
-3.  Write the component as a `React.FC`.
-4.  Import and use the new component where needed (e.g., in `DeviceDetails.tsx`).
-5.  If the component needs data from the backend, ensure the parent component fetches that data and passes it down as props.
+AutoJailbreak/
+├── components/         # React Components
+├── hooks/              # Custom React Hooks
+├── services/           # Frontend Services (API, etc.)
+├── server/             # Python/Flask Backend
+│   ├── core/           # Core backend logic (detection, execution)
+│   ├── bin/            # Directory for real exploit binaries/scripts
+│   ├── app.py          # Main Flask app, defines API routes
+│   └── requirements.txt
+├── App.tsx             # Main React component
+├── index.html          # Entry point for desktop app
+├── mobile.html         # Entry point for mobile web dashboard
+└── HOW_TO.md           # This file
+```

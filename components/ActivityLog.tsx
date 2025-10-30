@@ -1,40 +1,32 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { logger } from '../services/logger';
+import React from 'react';
+import { useAnalytics } from '../hooks/useAnalytics';
 import type { LogEntry } from '../types';
 
-const logTypeClasses = {
+const logTypeClasses: Record<LogEntry['type'], string> = {
   info: 'text-blue-400',
   success: 'text-green-400',
   error: 'text-red-400',
 };
 
 const ActivityLog: React.FC = () => {
-    const [logs, setLogs] = useState<LogEntry[]>([]);
-    const logContainerRef = useRef<HTMLDivElement>(null);
+    const { logs } = useAnalytics();
 
-    useEffect(() => {
-        const unsubscribe = logger.subscribe(setLogs);
-        return () => unsubscribe();
-    }, []);
-
-    useEffect(() => {
-        if (logContainerRef.current) {
-            logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-        }
-    }, [logs]);
+    // Show latest 5 logs, reversed to show newest first
+    const recentLogs = logs.slice(-5).reverse();
 
     return (
-        <div className="rounded-lg border border-[var(--neutral-800)] bg-[var(--neutral-800)]/30 p-4">
-            <h3 className="text-md font-semibold mb-2">Activity Log</h3>
-            <div ref={logContainerRef} className="h-48 resize-y overflow-y-auto rounded-md bg-[var(--neutral-900)] p-2 font-mono text-xs">
-                {logs.map((log, index) => (
-                    <div key={index} className="flex gap-2">
-                        <span className="text-[var(--neutral-500)]">{log.timestamp}</span>
-                        <span className={`${logTypeClasses[log.type]} font-bold`}>{log.type.toUpperCase()}</span>
-                        <span className="text-[var(--neutral-300)] flex-1">{log.message}</span>
+        <div className="h-48 overflow-y-auto space-y-2 text-sm font-mono text-[var(--neutral-400)] pr-2">
+            {recentLogs.length > 0 ? (
+                recentLogs.map((log, index) => (
+                    <div key={index} className="flex gap-2 items-start">
+                        <span className="shrink-0 text-[var(--neutral-500)]">{log.timestamp}</span>
+                        <span className={`shrink-0 font-semibold w-12 text-center rounded-sm ${logTypeClasses[log.type]}`}>{log.type.toUpperCase()}</span>
+                        <p className="whitespace-normal break-words" title={log.message}>{log.message}</p>
                     </div>
-                ))}
-            </div>
+                ))
+            ) : (
+                <p className="flex items-center justify-center h-full">No activity yet.</p>
+            )}
         </div>
     );
 };

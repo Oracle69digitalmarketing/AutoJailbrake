@@ -1,4 +1,3 @@
-
 import type { LogEntry } from '../types';
 
 // A simple in-memory log store for the ActivityLog component

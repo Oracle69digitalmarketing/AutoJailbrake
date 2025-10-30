@@ -1,50 +1,77 @@
 import React, { useState, useEffect } from 'react';
 import { networkService } from '../services/networkService';
-import type { TrafficData } from '../types';
+import type { Device } from '../types';
+import { ServerStackIcon } from './icons';
 
-const NetworkView: React.FC = () => {
-    const [packets, setPackets] = useState<TrafficData[]>([]);
-    const [isMonitoring, setIsMonitoring] = useState(false);
+interface NetworkViewProps {
+  onDeviceSelected: (device: Device) => void;
+}
+
+const NetworkView: React.FC<NetworkViewProps> = ({ onDeviceSelected }) => {
+    const [isLoading, setIsLoading] = useState(true);
+    const [devices, setDevices] = useState<Device[]>([]);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        let unsubscribe: (() => void) | null = null;
-        if (isMonitoring) {
-            networkService.start();
-            unsubscribe = networkService.subscribe((packet) => {
-                setPackets(prev => [packet, ...prev.slice(0, 49)]);
-            });
-        } else {
-            networkService.stop();
-        }
-
-        return () => {
-            networkService.stop();
-            if (unsubscribe) {
-                unsubscribe();
+        const scan = async () => {
+            setIsLoading(true);
+            setError(null);
+            try {
+                const foundDevices = await networkService.scanForDevices();
+                setDevices(foundDevices);
+            } catch (e) {
+                setError("Failed to scan the network. Ensure the server is running.");
+                console.error(e);
+            } finally {
+                setIsLoading(false);
             }
         };
-    }, [isMonitoring]);
+        scan();
+    }, []);
 
     return (
-        <div className="rounded-lg border border-[var(--neutral-800)] bg-[var(--neutral-800)]/30 p-4">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-md font-semibold">Live Network Traffic</h3>
-                <button
-                    onClick={() => setIsMonitoring(!isMonitoring)}
-                    className={`px-3 py-1 text-xs font-semibold rounded-md ${isMonitoring ? 'bg-red-500/30 text-red-400' : 'bg-green-500/30 text-green-400'}`}
-                >
-                    {isMonitoring ? 'Stop' : 'Start'}
-                </button>
+        <div className="container mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 animate-fade-in">
+            <div className="text-center">
+                <h1 className="text-3xl font-bold tracking-tight">Network Devices</h1>
+                <p className="mt-2 text-[var(--neutral-400)] max-w-2xl mx-auto">
+                    Discover and manage devices running AutoJailbreak on your local network.
+                </p>
             </div>
-            <div className="h-40 overflow-y-auto bg-[var(--neutral-900)] p-2 rounded-md font-mono text-xs">
-                {packets.length === 0 && <p className="text-center text-[var(--neutral-500)] text-[10px]">Start monitoring to see traffic.</p>}
-                {packets.map((p, i) => (
-                    <div key={`${p.timestamp}-${i}`} className="flex justify-between p-1 text-[10px]">
-                        <span className="text-blue-400 w-1/3 truncate">{p.source} &rarr; {p.destination}</span>
-                        <span className="text-yellow-400">{p.protocol}</span>
-                        <span className="text-white">{p.length}b</span>
+            
+            <div className="mt-8">
+                {isLoading && (
+                    <div className="flex flex-col items-center justify-center text-center p-12 rounded-lg border border-dashed border-[var(--neutral-700)]">
+                        <ServerStackIcon className="h-12 w-12 text-[var(--primary-500)] animate-pulse" />
+                        <p className="mt-4 font-semibold">Scanning local network...</p>
+                        <p className="text-sm text-[var(--neutral-400)]">Looking for other AutoJailbreak instances.</p>
                     </div>
-                ))}
+                )}
+                {!isLoading && error && (
+                     <div className="p-12 text-center text-red-400">
+                        <p>{error}</p>
+                    </div>
+                )}
+                {!isLoading && !error && devices.length === 0 && (
+                     <div className="p-12 text-center text-[var(--neutral-400)]">
+                        <p>No other devices found on the network.</p>
+                    </div>
+                )}
+                {!isLoading && !error && devices.length > 0 && (
+                    <div className="space-y-4">
+                        {devices.map(device => (
+                            <button key={device.id} onClick={() => onDeviceSelected(device)} className="w-full text-left p-4 rounded-md bg-[var(--neutral-800)]/60 hover:bg-[var(--neutral-700)] transition-colors flex justify-between items-center border border-[var(--neutral-700)]">
+                                <div>
+                                    <p className="font-semibold">{device.name}</p>
+                                    <p className="text-xs text-[var(--neutral-400)]">{device.os} {device.osVersion}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm font-mono">{device.ipAddress}</p>
+                                    <p className="text-xs text-[var(--neutral-500)]">{device.status}</p>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

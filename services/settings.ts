@@ -1,4 +1,3 @@
-
 import type { Settings } from '../types';
 
 const SETTINGS_KEY = 'device-toolkit-settings';

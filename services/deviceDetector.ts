@@ -1,64 +1,75 @@
 import type { Device } from '../types';
+import { MOCK_DEVICES } from '../constants';
 
-type Subscription = {
+interface DeviceDetectorCallbacks {
   onConnect: (devices: Device[]) => void;
   onDisconnect: () => void;
-  onError: (error: string) => void;
+  onError: (message: string) => void;
+}
+
+type Subscription = {
+  unsubscribe: () => void;
 };
 
 class DeviceDetectorService {
-  private intervalId: ReturnType<typeof setInterval> | null = null;
-  private listeners: Set<Subscription> = new Set();
-  private isConnected = false;
+  private listeners: Set<DeviceDetectorCallbacks> = new Set();
+  private timeoutId: ReturnType<typeof setTimeout> | null = null;
+  private isRunning: boolean = false;
 
-  start() {
-    this.stop(); 
-    this.fetchDevices(); // Initial fetch
-    this.intervalId = setInterval(() => this.fetchDevices(), 5000); // Poll every 5 seconds
+  subscribe(callbacks: DeviceDetectorCallbacks): Subscription {
+    this.listeners.add(callbacks);
+    return {
+      unsubscribe: () => {
+        this.listeners.delete(callbacks);
+      },
+    };
   }
 
-  async fetchDevices() {
-    try {
-      const response = await fetch('http://127.0.0.1:5000/detect');
-      if (!response.ok) {
-        throw new Error(`Backend server responded with status: ${response.status}`);
-      }
-      const devices: Device[] = await response.json();
-      
-      if (devices && devices.length > 0) {
-          if (!this.isConnected) {
-            this.isConnected = true;
-            this.listeners.forEach(listener => listener.onConnect(devices));
-          }
-      } else {
-          if (this.isConnected) {
-            this.isConnected = false;
-            this.listeners.forEach(listener => listener.onDisconnect());
-          }
-      }
-
-    } catch (error) {
-      console.error("Failed to fetch devices from backend:", error);
-      this.listeners.forEach(listener => listener.onError('Could not connect to backend service.'));
-      this.stop();
+  start() {
+    if (this.isRunning) {
+      return;
     }
+    this.isRunning = true;
+    this.simulateConnection();
   }
 
   stop() {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
     }
-    this.isConnected = false;
+    this.isRunning = false;
   }
 
-  subscribe(subscription: Subscription) {
-    this.listeners.add(subscription);
-    return {
-      unsubscribe: () => {
-        this.listeners.delete(subscription);
-      },
-    };
+  private simulateConnection() {
+    this.timeoutId = setTimeout(() => {
+      if (!this.isRunning) return;
+
+      const shouldConnect = Math.random() > 0.2; // 80% chance to connect
+      if (shouldConnect) {
+        // Find 1 to 2 devices
+        const deviceCount = Math.floor(Math.random() * 2) + 1;
+        const shuffled = [...MOCK_DEVICES].sort(() => 0.5 - Math.random());
+        const connectedDevices = shuffled.slice(0, deviceCount);
+        this.listeners.forEach(listener => listener.onConnect(connectedDevices));
+
+        // Simulate a disconnection later
+        this.timeoutId = setTimeout(() => {
+          if (!this.isRunning) return;
+          this.listeners.forEach(listener => listener.onDisconnect());
+          // And then try to connect again
+          this.simulateConnection();
+        }, 8000 + Math.random() * 5000);
+
+      } else {
+        const errorMessage = "Failed to connect to device daemon. Is it running?";
+        this.listeners.forEach(listener => listener.onError(errorMessage));
+         // Retry connection
+        this.timeoutId = setTimeout(() => {
+            if (!this.isRunning) return;
+            this.simulateConnection();
+        }, 5000);
+      }
+    }, 2000 + Math.random() * 2000);
   }
 }
 

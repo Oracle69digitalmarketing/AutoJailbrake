@@ -1,4 +1,3 @@
-
 // FIX: Update import to GoogleGenAI and add Type
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Device, Exploit, OrchestratorPlan, UpdateCheckResult } from '../types';
