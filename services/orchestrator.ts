@@ -1,156 +1,127 @@
-import type { RecoveryResult, BruteForceUpdate } from '../types';
 import { logger } from './logger';
 import { showNotification } from './notification';
+import type { RecoveryResult, BruteForceUpdate } from '../types';
 
 interface OrchestratorCallbacks {
-  onLog: (log: string) => void;
-  onProgressUpdate: (progress: number) => void;
-  onStatusUpdate: (status: string) => void;
-  onComplete: (results?: RecoveryResult[]) => void;
+    onLog: (log: string) => void;
+    onProgressUpdate: (progress: number) => void;
+    onStatusUpdate: (status: string) => void;
+    onComplete: (results?: RecoveryResult[]) => void;
 }
 
-class OrchestratorService {
-  private callbacks: OrchestratorCallbacks | null = null;
-  private abortController: AbortController | null = null;
+class Orchestrator {
+    private callbacks: Partial<OrchestratorCallbacks> = {};
+    private processTimer: ReturnType<typeof setTimeout> | null = null;
 
-  register(callbacks: OrchestratorCallbacks) {
-    this.callbacks = callbacks;
-  }
-
-  unregister() {
-    if (this.abortController) {
-      this.abortController.abort();
-      this.abortController = null;
+    register(callbacks: Partial<OrchestratorCallbacks>) {
+        this.callbacks = callbacks;
     }
-    this.callbacks = null;
-  }
 
-  private log(message: string) {
-    if (this.callbacks) this.callbacks.onLog(message);
-  }
-
-  private updateProgress(progress: number) {
-    if (this.callbacks) this.callbacks.onProgressUpdate(progress);
-  }
-  
-  private updateStatus(status: string) {
-    if (this.callbacks) this.callbacks.onStatusUpdate(status);
-  }
-
-  private complete(results?: RecoveryResult[]) {
-    if (this.callbacks) this.callbacks.onComplete(results);
-  }
-
-  async startProcess(actionName: string) {
-    if (!this.callbacks) return;
-
-    logger.info(`Requesting process from backend: ${actionName}`);
-    this.updateProgress(0);
-    this.updateStatus('Initializing...');
-    this.log(`[INFO] Sending request to backend for action: ${actionName}`);
-
-    this.abortController = new AbortController();
-    
-    try {
-      const response = await fetch('http://127.0.0.1:5000/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actionName }),
-        signal: this.abortController.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`);
-      }
-
-      if (!response.body) {
-        throw new Error('Response body is null');
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep the last, possibly incomplete, line
-
-        for (const line of lines) {
-          if (line.startsWith('LOG:')) {
-            this.log(line.substring(5));
-          } else if (line.startsWith('STATUS:')) {
-            this.updateStatus(line.substring(8));
-          } else if (line.startsWith('PROGRESS:')) {
-            this.updateProgress(parseInt(line.substring(10), 10));
-          } else if (line.startsWith('ERROR:')) {
-             this.log(`[BACKEND ERROR] ${line.substring(7)}`);
-             logger.error(`Backend error for "${actionName}": ${line.substring(7)}`);
-          }
+    unregister() {
+        this.callbacks = {};
+        if (this.processTimer) {
+            clearTimeout(this.processTimer);
+            this.processTimer = null;
         }
-      }
-
-      // Handle any remaining data in the buffer
-      if (buffer) {
-        this.log(buffer);
-      }
-      
-      this.updateProgress(100);
-      this.updateStatus('Completed');
-      logger.success(`Process "${actionName}" completed.`);
-      showNotification({ title: 'Process Complete', message: `Action "${actionName}" finished.`, type: 'success' });
-      this.complete();
-
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        this.log('[INFO] Process aborted by user.');
-        logger.info(`Process "${actionName}" was aborted.`);
-      } else {
-        this.log(`[FATAL] Connection to backend failed: ${error.message}`);
-        this.updateStatus('Connection Error');
-        logger.error(`Failed to execute "${actionName}": ${error.message}`);
-        showNotification({ title: 'Execution Failed', message: 'Could not connect to the backend server.', type: 'error' });
-        this.complete();
-      }
-    } finally {
-        this.abortController = null;
     }
-  }
 
-  async *startPasscodeBruteForce(pinLength: 4 | 6): AsyncGenerator<BruteForceUpdate> {
-    const maxAttempts = Math.pow(10, pinLength);
-    const successAttempt = Math.floor(maxAttempts * 0.001) + 100; 
-    
-    for (let i = 0; i <= maxAttempts; i++) {
-        if (i % 100 === 0 || i === successAttempt) {
-            const currentAttemptPin = i.toString().padStart(pinLength, '0');
-            const progress = (i / maxAttempts) * 100;
+    private log(message: string) {
+        logger.info(message);
+        this.callbacks.onLog?.(message);
+    }
 
-            if (i === successAttempt) {
-                logger.success(`Passcode found: ${currentAttemptPin}`);
-                showNotification({ title: 'Passcode Found!', message: `The device passcode is ${currentAttemptPin}`, type: 'success' });
-                yield {
-                    currentAttemptPin,
-                    attemptCount: i,
-                    progress,
-                    foundPin: currentAttemptPin,
-                };
+    private updateProgress(progress: number, status: string) {
+        this.callbacks.onProgressUpdate?.(progress);
+        this.callbacks.onStatusUpdate?.(status);
+    }
+
+    private complete(results?: RecoveryResult[]) {
+        logger.success('Process completed successfully.');
+        showNotification({
+            title: 'Process Complete',
+            message: 'The operation finished successfully.',
+            type: 'success',
+        });
+        this.callbacks.onComplete?.(results);
+    }
+
+    startProcess(actionName: string) {
+        this.log(`Starting process: ${actionName}`);
+        
+        const steps = [
+            { status: 'Initializing...', duration: 1000, progress: 10 },
+            { status: 'Analyzing device...', duration: 2000, progress: 30 },
+            { status: 'Applying exploit...', duration: 3000, progress: 60 },
+            { status: 'Verifying changes...', duration: 1500, progress: 90 },
+            { status: 'Cleaning up...', duration: 1000, progress: 100 },
+        ];
+
+        let currentStep = 0;
+        const runStep = () => {
+            if (currentStep >= steps.length) {
+                // Check if it's a recovery action to return mock results
+                if (actionName.toLowerCase().includes('photo')) {
+                    const mockResults: RecoveryResult[] = Array.from({ length: 15 }, (_, i) => ({
+                        id: `photo-${i}`,
+                        preview: `https://picsum.photos/seed/recovered${i}/200`,
+                        date: new Date(Date.now() - i * 1000 * 3600 * 24).toISOString().split('T')[0],
+                    }));
+                    this.complete(mockResults);
+                } else {
+                    this.complete();
+                }
                 return;
             }
 
-            yield {
-                currentAttemptPin,
-                attemptCount: i,
-                progress,
-            };
+            const step = steps[currentStep];
+            this.updateProgress(step.progress, step.status);
+            this.log(step.status);
 
-            await new Promise(resolve => setTimeout(resolve, 5));
-        }
+            this.processTimer = setTimeout(() => {
+                currentStep++;
+                runStep();
+            }, step.duration);
+        };
+
+        runStep();
     }
-  }
+
+    async *startPasscodeBruteForce(pinLength: 4 | 6): AsyncGenerator<BruteForceUpdate> {
+        const maxAttempts = Math.pow(10, pinLength);
+        const foundPin = String(Math.floor(Math.random() * maxAttempts)).padStart(pinLength, '0');
+        const foundAtAttempt = Math.floor(Math.random() * (maxAttempts * 0.05)) + 1; // Find it within first 5% of attempts for demo purposes
+
+        this.log(`Starting passcode brute-force for ${pinLength}-digit PIN.`);
+
+        for (let i = 0; i <= foundAtAttempt; i++) {
+            const currentAttemptPin = String(i).padStart(pinLength, '0');
+            
+            // Update UI periodically
+            if (i % 100 === 0 || i === foundAtAttempt) { 
+                const update: BruteForceUpdate = {
+                    currentAttemptPin,
+                    attemptCount: i,
+                    progress: (i / maxAttempts) * 100,
+                };
+                
+                if (i === foundAtAttempt) {
+                    update.foundPin = foundPin;
+                    update.currentAttemptPin = foundPin;
+                    update.progress = 100;
+                    yield update;
+                    logger.success(`Passcode found: ${foundPin}`);
+                    showNotification({ title: 'Success', message: `Passcode found: ${foundPin}`, type: 'success' });
+                    return;
+                }
+                
+                yield update;
+                await new Promise(resolve => setTimeout(resolve, 5)); // small delay to make it look like it's working
+            }
+        }
+
+        logger.error('Passcode not found within attempts.');
+        showNotification({ title: 'Failed', message: 'Could not find passcode.', type: 'error' });
+    }
 }
 
-export const orchestrator = new OrchestratorService();
+export const orchestrator = new Orchestrator();

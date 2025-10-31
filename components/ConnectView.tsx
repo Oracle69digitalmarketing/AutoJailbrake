@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { deviceDetector } from '../services/deviceDetector';
+import React, { useEffect, useState, useCallback } from 'react';
+import { detectDevices } from '../services/deviceDetector';
 import type { Device } from '../types';
 import { UsbIcon } from './icons';
 
@@ -12,38 +12,36 @@ const ConnectView: React.FC<ConnectViewProps> = ({ onDeviceSelected, onManualSel
   const [status, setStatus] = useState('Initializing...');
   const [error, setError] = useState<string | null>(null);
   const [detectedDevices, setDetectedDevices] = useState<Device[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleScan = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    setStatus('Scanning for devices via backend...');
+    try {
+      const devices = await detectDevices();
+      setDetectedDevices(devices);
+      if (devices.length > 0) {
+        setStatus(`Found ${devices.length} device(s). Please select one to continue.`);
+      } else {
+        setStatus('No devices detected. Please ensure your device is connected.');
+      }
+    } catch (e: any) {
+      setError(e.message || 'An unknown error occurred.');
+      setStatus('Error connecting to backend service.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    setStatus('Scanning for devices...');
-    const subscription = deviceDetector.subscribe({
-      onConnect: (devices) => {
-        setError(null);
-        setStatus(`Found ${devices.length} device(s). Please select one to continue.`);
-        setDetectedDevices(devices);
-      },
-      onDisconnect: () => {
-        setStatus('Device disconnected. Waiting for connection...');
-        setDetectedDevices([]);
-      },
-      onError: (errorMessage) => {
-        setError(errorMessage);
-        setStatus('Error connecting to service.');
-        setDetectedDevices([]);
-      }
-    });
-
-    deviceDetector.start();
-
-    return () => {
-      subscription.unsubscribe();
-      deviceDetector.stop();
-    };
-  }, []);
+    handleScan();
+  }, [handleScan]);
 
   return (
     <div className="flex flex-col items-center justify-center text-center pt-16 animate-fade-in">
       <div className="relative flex items-center justify-center w-40 h-40">
-        <div className={`absolute inset-0 bg-[var(--primary-500)]/10 rounded-full ${detectedDevices.length === 0 && !error ? 'animate-pulse' : ''}`}></div>
+        <div className={`absolute inset-0 bg-[var(--primary-500)]/10 rounded-full ${isLoading ? 'animate-pulse' : ''}`}></div>
         <div className="relative bg-[var(--neutral-800)] rounded-full p-8 border-2 border-[var(--neutral-700)]">
           <UsbIcon className={`w-16 h-16 ${error ? 'text-red-500' : 'text-[var(--primary-500)]'}`} />
         </div>
@@ -51,7 +49,7 @@ const ConnectView: React.FC<ConnectViewProps> = ({ onDeviceSelected, onManualSel
 
       <h1 className="mt-8 text-3xl font-bold tracking-tight">Connect Your Device</h1>
       <p className="mt-2 text-[var(--neutral-400)] max-w-md">
-        Plug in your device via USB. The backend service will detect it automatically.
+        Plug in your device via USB. Ensure the backend service is running and prerequisites are installed.
       </p>
 
       <div className="mt-6 font-mono p-2 bg-[var(--neutral-800)] rounded-md min-h-[40px] flex items-center justify-center">
@@ -74,13 +72,20 @@ const ConnectView: React.FC<ConnectViewProps> = ({ onDeviceSelected, onManualSel
           </div>
       )}
 
-      <div className="mt-8 border-t border-[var(--neutral-800)] w-full max-w-sm pt-6">
+      <div className="mt-8 border-t border-[var(--neutral-800)] w-full max-w-sm pt-6 flex flex-col items-center gap-4">
+        <button
+          onClick={handleScan}
+          disabled={isLoading}
+          className="rounded-md bg-[var(--primary-500)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--primary-600)] transition-colors disabled:opacity-50"
+        >
+          {isLoading ? 'Scanning...' : 'Rescan for Devices'}
+        </button>
         <p className="text-sm text-[var(--neutral-400)]">
-          If your device is not detected, check the backend service or identify it manually.
+          If your device is not detected, check your connection or identify it manually.
         </p>
         <button
           onClick={onManualSelect}
-          className="mt-4 rounded-md bg-[var(--neutral-700)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--neutral-600)] transition-colors"
+          className="rounded-md bg-[var(--neutral-700)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--neutral-600)] transition-colors"
         >
           Identify Device Manually
         </button>
